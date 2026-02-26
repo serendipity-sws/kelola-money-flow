@@ -1,0 +1,5 @@
+*.pdf
+__pycache__/
+*.pyc
+_temp_upload.json
+.claude/
