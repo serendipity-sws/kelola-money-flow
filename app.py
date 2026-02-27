@@ -229,16 +229,25 @@ if st.session_state.file_results:
         if result["status"] == "success":
             source_name = result["source_info"]["display_name"]
             count = result["count"]
+            is_llm = result["source_info"].get("parse_method") == "llm"
+            ai_badge = ' <span class="source-badge" style="background:#e8d5b7;color:#8b6914;">AI</span>' if is_llm else ""
+            llm_stats = ""
+            if is_llm and "llm_stats" in result["source_info"]:
+                stats = result["source_info"]["llm_stats"]
+                if stats["rejected"] > 0:
+                    llm_stats = f' <span style="color:#b8860b;font-size:0.75rem;">({stats["rejected"]} gagal validasi)</span>'
             st.markdown(
                 f'<div class="file-item">'
                 f'  <div>'
                 f'    <div class="file-name">{filename}</div>'
-                f'    <span class="source-badge">{source_name}</span>'
-                f'    <span class="file-status success">{count} transaksi ditemukan</span>'
+                f'    <span class="source-badge">{source_name}</span>{ai_badge}'
+                f'    <span class="file-status success">{count} transaksi ditemukan</span>{llm_stats}'
                 f'  </div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
+            if is_llm:
+                st.caption("Diproses oleh AI — harap periksa kesesuaian nominal.")
 
         elif result["status"] == "needs_password":
             st.markdown(
