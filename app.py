@@ -9,7 +9,7 @@ import pandas as pd
 
 from parser import parse_pdf, check_pdf_encrypted, format_idr
 from categories import PAYMENT_CATEGORIES, ALL_CATEGORIES
-from charts import build_sankey, render_sankey_clean
+from charts import build_sankey, build_sankey_v2, render_sankey_clean
 from styles import get_app_css
 
 # ---------------------------------------------------------------------------
@@ -420,7 +420,9 @@ st.markdown("<div style='height: 24px'></div>", unsafe_allow_html=True)
 # ---------------------------------------------------------------------------
 
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
-sankey_fig = build_sankey(df)
+sankey_fig = build_sankey_v2(df)
+if sankey_fig is None:
+    sankey_fig = build_sankey(df)  # Fallback to expense-only view
 
 if sankey_fig:
     render_sankey_clean(sankey_fig, height=540)
