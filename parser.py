@@ -50,7 +50,9 @@ def parse_pdf(pdf_bytes: bytes, password: str = "") -> tuple[pd.DataFrame, dict]
     if bank == "BCA" and stype == "credit_card":
         df = parse_bca_credit_card(pdf_bytes, password)
     elif bank == "BCA" and stype == "account":
-        df = parse_bca_account(pdf_bytes, password)
+        # BCA account format is multi-line — regex parser can't handle it,
+        # so route through LLM which correctly merges multi-line transactions
+        df, source_info = _llm_fallback(full_text, source_info)
     elif bank == "OCBC":
         df = parse_ocbc_statement(pdf_bytes, password)
     else:
