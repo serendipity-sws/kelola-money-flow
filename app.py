@@ -375,21 +375,32 @@ with m1:
     """, unsafe_allow_html=True)
 
 with m2:
+    if total_card_payments > 0:
+        m2_label = "Pembayaran Kartu"
+        m2_value = format_idr(total_card_payments)
+    else:
+        m2_label = "Total Pemasukan"
+        m2_value = format_idr(total_real_income)
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">Pembayaran Kartu</div>
-        <div class="metric-value">{format_idr(total_card_payments)}</div>
+        <div class="metric-label">{m2_label}</div>
+        <div class="metric-value">{m2_value}</div>
     </div>
     """, unsafe_allow_html=True)
 
 with m3:
-    net_class = "positive" if net_flow >= 0 else "negative"
-    net_label = "Pemasukan Lain" if total_real_income == 0 else "Net (Non-Kartu)"
-    net_display = format_idr(total_real_income) if total_real_income == 0 else format_idr(net_flow)
+    if total_real_income > 0:
+        net_class = "positive" if net_flow >= 0 else "negative"
+        m3_label = "Arus Bersih"
+        m3_display = format_idr(net_flow)
+    else:
+        net_class = ""
+        m3_label = "Pemasukan Lain"
+        m3_display = format_idr(0)
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">{net_label}</div>
-        <div class="metric-value {net_class}">{net_display}</div>
+        <div class="metric-label">{m3_label}</div>
+        <div class="metric-value {net_class}">{m3_display}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -397,7 +408,7 @@ with m4:
     st.markdown(f"""
     <div class="metric-card">
         <div class="metric-label">Transaksi</div>
-        <div class="metric-value">{len(expense_df)}</div>
+        <div class="metric-value">{len(df)}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -425,7 +436,8 @@ st.markdown('</div>', unsafe_allow_html=True)
 # Transaction tables
 # ---------------------------------------------------------------------------
 
-tab_all, tab_income, tab_expense = st.tabs(["Semua Transaksi", "Pembayaran Kartu", "Pengeluaran per Kategori"])
+income_tab_label = "Pemasukan" if total_real_income > 0 else "Pembayaran Kartu"
+tab_all, tab_income, tab_expense = st.tabs(["Semua Transaksi", income_tab_label, "Pengeluaran per Kategori"])
 
 with tab_all:
     if df.empty:
