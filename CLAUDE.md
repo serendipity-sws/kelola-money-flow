@@ -36,42 +36,61 @@ columns = ["date", "description", "amount", "transaction_type", "category", "car
 - Category overrides stored in session_state keyed by (date, description, amount)
 - UI language: Indonesian. Error messages for users: Indonesian. Code/comments: English
 
-## Supported PDF Formats
-- **BCA Credit Card** ✓ tested (4 tx) — `DD-MMM DD-MMM DESC AMOUNT [CR]`, dots as thousands sep
-- **OCBC Credit Card** ✓ tested (43 tx) — `DD/MM DD/MM DESC AMOUNT [CR]`, commas as thousands sep, password-protected
-- **BCA Account** — parser written, untested (no sample PDF)
+## Architecture (modular, flat structure)
+```
+app.py           (~520 lines)  Streamlit UI, layout, state, event handling
+parser.py        (~100 lines)  Thin router: extract text → detect bank → LLM parse
+parser_core.py   (~170 lines)  Utilities: encryption, text extraction, IDR formatting, detect_source
+parser_bca.py    (~230 lines)  [ARCHIVED] BCA regex parsers — kept as fallback
+parser_ocbc.py   (~145 lines)  [ARCHIVED] OCBC regex parser — kept as fallback
+llm_parser.py    (~175 lines)  Gemini 2.5 Flash structured output + Pydantic schema
+validation.py    (~60 lines)   Amount-in-text anti-hallucination check
+categories.py    (~149 lines)  Keyword rules: EXPENSE_RULES, CREDIT_RULES, ACCOUNT_RULES
+charts.py        (~245 lines)  Sankey v1 (expense-only) + v2 (bidirectional) + SVG cleanup
+styles.py        (~359 lines)  YNAB-inspired CSS theme
+```
 
-## Current Status (Session 3 complete)
+## Parsing Architecture
+All statements go through Gemini 2.5 Flash LLM. detect_source() is used only for UI labeling.
+- Credit card statements: CREDIT_RULES for income, EXPENSE_RULES for expenses
+- Account statements: ACCOUNT_RULES for both income and expenses
+- Validation: amount-in-text check catches hallucinated numbers
+- Regex parsers archived in parser_bca.py / parser_ocbc.py as fallback (one-line routing change to re-enable)
+
+## Supported PDF Formats
+- **BCA Credit Card** ✓ tested (4 tx) — via LLM
+- **OCBC Credit Card** ✓ tested (43 tx) — via LLM, password-protected
+- **BCA Account** ✓ tested (33 tx) — via LLM, multi-line format
+- **Any other bank** — via LLM (untested, should work)
+
+## Current Status (Session 4 complete)
 
 ### Done
-- Core architecture: 5 modules, modular, working
-- BCA CC + OCBC CC parsing verified (47 total transactions)
+- Core architecture: modular, working
+- BCA CC + OCBC CC + BCA Account parsing verified (80 total transactions)
+- All-LLM parsing via Gemini 2.5 Flash (regex archived as fallback)
+- Parser split: parser.py → parser_core, parser_bca, parser_ocbc, llm_parser, validation
+- Bidirectional Sankey v2: Income Sources → Accounts → Expense Categories
+- Adaptive metrics: labels change based on data type (CC vs account)
+- Correct categorization: account income uses ACCOUNT_RULES (not CREDIT_RULES)
 - User recategorization via data_editor dropdown
 - Sankey SVG text-stroke fix
 - Deployed to Streamlit Cloud
-
-### Next: Universal Parser (Hybrid LLM)
-See `PLAN-universal-parser.md` for full implementation plan.
-- FIRST: split parser.py (636 lines, 3 reasons to change) → parser_core.py, parser_bca.py, parser_ocbc.py, thin parser.py router
-- THEN: add Gemini 2.5 Flash LLM fallback for unknown banks as `llm_parser.py`
-- Add regression tests: `tests/test_parsers.py` (known PDF → expected DataFrame)
-- New files: `parser_core.py`, `parser_bca.py`, `parser_ocbc.py`, `llm_parser.py`, `validation.py`, `tests/test_parsers.py`
-- Pre-req: Gemini API key from https://aistudio.google.com/apikey
-
-### Upcoming: Bidirectional Sankey + Income Tracking
-See `PLAN-sankey-v2.md` for full implementation plan.
-- Upgrade Sankey from expense-only to full inflow/outflow visualization
-- Add waterfall chart as alternative view
-- Add manual income input for cash/other sources
-- IMPORTANT: Build as `build_sankey_v2()` alongside existing function — do NOT rewrite `build_sankey()`. Swap only after v2 is proven. Keep old function as rollback.
+- Gemini API key configured (.streamlit/secrets.toml local, Streamlit Cloud secrets)
 
 ### Upcoming: Reimbursement Flagging
 - Add `reimbursable` boolean column to DataFrame contract (default=False)
 - Transaction-level checkboxes in UI, summary/export view
 - Small `reimbursement.py` module if logic gets complex
 
+### Upcoming: Waterfall Chart + Manual Income
+See `PLAN-sankey-v2.md` Phases 2-3
+- Waterfall chart as alternative view to Sankey
+- Manual income input for cash/salary not in PDFs
+
 ### Deferred
-- BCA account statement testing (need real PDF sample)
+- Regression tests (need test fixture strategy for PDFs with real financial data)
+- Delete build_sankey() v1 once v2 proven stable across 2+ sessions
 
 ## When Starting a New Session
 1. Read this file and any PLAN-*.md files in project root
