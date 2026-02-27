@@ -1,11 +1,12 @@
 """
 parser.py — PDF parsing router and public API
 
-Auto-detects bank and statement type from PDF content, then delegates
-to the appropriate bank-specific parser module:
-  - parser_bca.py  (BCA Credit Card, BCA Account)
-  - parser_ocbc.py (OCBC Credit Card)
-  - llm_parser.py  (unknown banks via Gemini 2.5 Flash)
+All statements are parsed by Gemini 2.5 Flash LLM. detect_source() is
+used only for UI labeling (bank name badge), not for routing.
+
+Regex parsers (parser_bca.py, parser_ocbc.py) are archived in the repo
+as fallback — to re-enable for a specific bank, add a routing condition
+in parse_pdf() before the LLM call.
 
 Public API used by app.py and charts.py:
   parse_pdf(pdf_bytes, password) -> (DataFrame, source_info)
@@ -23,20 +24,14 @@ from parser_core import (
     detect_source,
 )
 
-from parser_bca import parse_bca_credit_card, parse_bca_account
-from parser_ocbc import parse_ocbc_statement
-
 
 # ---------------------------------------------------------------------------
-# Master parse function — auto-detects and routes to correct parser
+# Master parse function — all statements go through LLM
 # ---------------------------------------------------------------------------
 
 def parse_pdf(pdf_bytes: bytes, password: str = "") -> tuple[pd.DataFrame, dict]:
     """
-    Auto-detect the PDF type and parse it with the appropriate parser.
-
-    Known banks (BCA, OCBC) use fast regex parsers.
-    Unknown banks fall back to Gemini LLM parsing.
+    Extract text from PDF, detect bank for labeling, parse via Gemini LLM.
 
     Returns:
         (DataFrame of transactions, source_info dict)
@@ -44,26 +39,13 @@ def parse_pdf(pdf_bytes: bytes, password: str = "") -> tuple[pd.DataFrame, dict]
     full_text = extract_full_text(pdf_bytes, password)
     source_info = detect_source(full_text)
 
-    bank = source_info["bank"]
-    stype = source_info["statement_type"]
-
-    if bank == "BCA" and stype == "credit_card":
-        df = parse_bca_credit_card(pdf_bytes, password)
-    elif bank == "BCA" and stype == "account":
-        # BCA account format is multi-line — regex parser can't handle it,
-        # so route through LLM which correctly merges multi-line transactions
-        df, source_info = _llm_fallback(full_text, source_info)
-    elif bank == "OCBC":
-        df = parse_ocbc_statement(pdf_bytes, password)
-    else:
-        # Unknown bank — try LLM fallback
-        df, source_info = _llm_fallback(full_text, source_info)
+    df, source_info = _llm_parse(full_text, source_info)
 
     return df, source_info
 
 
-def _llm_fallback(full_text: str, source_info: dict) -> tuple[pd.DataFrame, dict]:
-    """Attempt LLM parsing for unrecognized bank statements."""
+def _llm_parse(full_text: str, source_info: dict) -> tuple[pd.DataFrame, dict]:
+    """Parse statement text using Gemini 2.5 Flash."""
     try:
         import streamlit as st
         api_key = st.secrets.get("GEMINI_API_KEY", "")
