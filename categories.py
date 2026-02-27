@@ -11,6 +11,10 @@ Data-driven keyword matching: each rule set is a list of dicts with
 
 PAYMENT_CATEGORIES = {"Pembayaran Kartu", "Refund"}
 
+# Sankey exclusions — internal money movements that inflate the diagram
+# Includes PAYMENT_CATEGORIES + bank-account equivalents (transfers, CC bill payments)
+SANKEY_EXCLUDED_CATEGORIES = PAYMENT_CATEGORIES | {"Transfer", "Pembayaran"}
+
 
 # ---------------------------------------------------------------------------
 # Credit card expense rules (order matters — first match wins)

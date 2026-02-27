@@ -105,7 +105,7 @@ def build_sankey(dataframe, payment_categories=None) -> go.Figure | None:
         ),
         font=dict(family="Inter, sans-serif", size=13, color="#2d3a2e"),
         height=500,
-        margin=dict(l=8, r=8, t=48, b=8),
+        margin=dict(l=8, r=8, t=32, b=8),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
     )
@@ -223,7 +223,7 @@ def build_sankey_v2(dataframe, payment_categories=None) -> go.Figure | None:
         ),
         font=dict(family="Inter, sans-serif", size=13, color="#2d3a2e"),
         height=500,
-        margin=dict(l=8, r=8, t=48, b=8),
+        margin=dict(l=8, r=8, t=32, b=8),
         paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
     )

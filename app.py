@@ -8,7 +8,7 @@ import streamlit as st
 import pandas as pd
 
 from parser import parse_pdf, check_pdf_encrypted, format_idr
-from categories import PAYMENT_CATEGORIES, ALL_CATEGORIES
+from categories import PAYMENT_CATEGORIES, SANKEY_EXCLUDED_CATEGORIES, ALL_CATEGORIES
 from charts import build_sankey, build_sankey_v2, render_sankey_clean
 from styles import get_app_css
 
@@ -356,7 +356,7 @@ if min_amount > 0:
 expense_df = df[df["transaction_type"] == "expense"]
 income_df = df[df["transaction_type"] == "income"]
 
-real_income_df = income_df[~income_df["category"].isin(PAYMENT_CATEGORIES)]
+real_income_df = income_df[~income_df["category"].isin(SANKEY_EXCLUDED_CATEGORIES)]
 card_payment_df = income_df[income_df["category"].isin(PAYMENT_CATEGORIES)]
 
 total_expense = expense_df["amount"].abs().sum()
@@ -412,7 +412,7 @@ with m4:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<div style='height: 24px'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -420,12 +420,12 @@ st.markdown("<div style='height: 24px'></div>", unsafe_allow_html=True)
 # ---------------------------------------------------------------------------
 
 st.markdown('<div class="section-card">', unsafe_allow_html=True)
-sankey_fig = build_sankey_v2(df)
+sankey_fig = build_sankey_v2(df, payment_categories=SANKEY_EXCLUDED_CATEGORIES)
 if sankey_fig is None:
     sankey_fig = build_sankey(df)  # Fallback to expense-only view
 
 if sankey_fig:
-    render_sankey_clean(sankey_fig, height=540)
+    render_sankey_clean(sankey_fig, height=520)
 else:
     st.markdown(
         '<div class="alert-info">Tidak ada data yang cukup untuk diagram Sankey dengan filter ini.</div>',
