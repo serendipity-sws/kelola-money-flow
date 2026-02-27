@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from google import genai
 from google.genai import types
 
-from categories import categorize_transaction, EXPENSE_RULES, CREDIT_RULES
+from categories import categorize_transaction, EXPENSE_RULES, CREDIT_RULES, ACCOUNT_RULES
 from validation import validate_transactions
 
 
@@ -140,11 +140,20 @@ def llm_parse_statement(
         amount = tx["amount"]
         tx_type = tx["transaction_type"]
 
-        if tx_type == "income":
-            category = categorize_transaction(tx["description"], CREDIT_RULES, fallback="Pembayaran Kartu")
+        if statement.statement_type == "account":
+            # Bank account: use ACCOUNT_RULES for both income and expense
+            if tx_type == "income":
+                category = categorize_transaction(tx["description"], ACCOUNT_RULES, fallback="Pendapatan Lain")
+            else:
+                category = categorize_transaction(tx["description"], ACCOUNT_RULES, fallback="Pengeluaran Lain")
+                amount = -amount
         else:
-            category = categorize_transaction(tx["description"], EXPENSE_RULES)
-            amount = -amount  # Expenses are negative per contract
+            # Credit card: use CREDIT_RULES for income, EXPENSE_RULES for expense
+            if tx_type == "income":
+                category = categorize_transaction(tx["description"], CREDIT_RULES, fallback="Pembayaran Kartu")
+            else:
+                category = categorize_transaction(tx["description"], EXPENSE_RULES)
+                amount = -amount
 
         rows.append({
             "date": pd.to_datetime(tx["date"]),
